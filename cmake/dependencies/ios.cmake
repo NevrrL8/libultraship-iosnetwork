@@ -12,6 +12,22 @@ if (NOT ${SDL2_FOUND})
     FetchContent_MakeAvailable(SDL2)
 endif()
 
+# =================== SDL2_net ===================
+set(SDL2NET_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2NET_SAMPLES OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SDL2_net
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_net.git
+    GIT_TAG release-2.2.0
+)
+FetchContent_MakeAvailable(SDL2_net)
+
+if(NOT TARGET SDL2_net::SDL2_net-static)
+    message(FATAL_ERROR "SDL2_net static target is unavailable")
+endif()
+
+
 #=================== nlohmann-json ===================
 find_package(nlohmann_json QUIET)
 if (NOT ${nlohmann_json_FOUND})
