@@ -1,39 +1,50 @@
-# In variables: patch_file, with_reset
+ 
+# Apply patches without resetting dependency files.
+# Supports an optional follow-up patch.
 
-function(patch)
+function(apply_patch_if_needed file)
     execute_process(
-        COMMAND git apply ${patch_file}
-        RESULT_VARIABLE ret
+        COMMAND git apply --reverse --check "${file}"
+        RESULT_VARIABLE already_applied
         ERROR_QUIET
     )
-    set(ret ${ret} PARENT_SCOPE)
-endfunction()
 
-function(check_patch)
-    execute_process(
-        COMMAND git apply --reverse --check ${patch_file}
-        RESULT_VARIABLE ret
-        ERROR_QUIET
-    )
-    set(ret ${ret} PARENT_SCOPE)
-endfunction()
-
-# Applies the patch or checks if it has already been applied successfully previously. Will error otherwise.
-function(patch_if_needed)
-    patch()
-    if(NOT ret EQUAL 0)
-        check_patch()
+    if(already_applied EQUAL 0)
+        message(STATUS "Already applied: ${file}")
+        return()
     endif()
-    set(ret ${ret} PARENT_SCOPE)
+
+    execute_process(
+        COMMAND git apply --check "${file}"
+        RESULT_VARIABLE can_apply
+        ERROR_QUIET
+    )
+
+    if(NOT can_apply EQUAL 0)
+        message(FATAL_ERROR
+            "Failed to apply patch ${file}; dependency files were preserved. Inspect the checkout before retrying.")
+    endif()
+
+    execute_process(
+        COMMAND git apply "${file}"
+        RESULT_VARIABLE result
+    )
+
+    if(NOT result EQUAL 0)
+        message(FATAL_ERROR
+            "Failed to apply patch ${file}; dependency files were preserved. Inspect the checkout before retrying.")
+    endif()
+
+    message(STATUS "Successfully patched: ${file}")
 endfunction()
 
-# Preserve dependency edits. An incompatible patch needs inspection, never reset.
-# with_reset is accepted for compatibility with existing package declarations.
-message(STATUS "Trying to apply patch ${patch_file}")
-patch_if_needed()
+if(NOT DEFINED patch_file OR "${patch_file}" STREQUAL "")
+    message(FATAL_ERROR "patch_file is required")
+endif()
 
-if(NOT ret EQUAL 0)
-    message(FATAL_ERROR "Failed to apply patch ${patch_file}; dependency files were preserved. Inspect the checkout before retrying.")
-else()
-    message(STATUS "Successfully patched with ${patch_file}")
+apply_patch_if_needed("${patch_file}")
+
+if(DEFINED fallback_patch_file AND
+   NOT "${fallback_patch_file}" STREQUAL "")
+    apply_patch_if_needed("${fallback_patch_file}")
 endif()
