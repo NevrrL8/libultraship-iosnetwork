@@ -9,6 +9,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(lus_tests
+    raw_texture_upload_tests.cpp
     binary_io_tests.cpp
     string_helper_tests.cpp
     crc64_tests.cpp

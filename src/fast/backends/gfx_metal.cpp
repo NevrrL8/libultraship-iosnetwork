@@ -9,6 +9,7 @@
 
 #include "fast/backends/gfx_metal.h"
 
+#include <TargetConditionals.h>
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
@@ -58,6 +59,14 @@ static MTL::SamplerAddressMode gfx_cm_to_metal(uint32_t val) {
     }
 
     return MTL::SamplerAddressModeClampToEdge;
+}
+
+// Simulator does not support changing depth clip mode, even on Apple Silicon hosts.
+// Keep its default clipping; real devices retain the N64 depth-clamping behavior.
+static void SetDepthClamp(MTL::RenderCommandEncoder* encoder) {
+#if !TARGET_OS_SIMULATOR
+    encoder->setDepthClipMode(MTL::DepthClipModeClamp);
+#endif
 }
 
 // MARK: - ImGui & SDL Wrappers
@@ -904,7 +913,7 @@ void GfxRenderingAPIMetal::StartDrawToFramebuffer(int fb_id, float noise_scale) 
         fb.mCommandEncoder = fb.mCommandBuffer->renderCommandEncoder(fb.mRenderPassDescriptor);
         std::string fbce_label = fmt::format("FrameBuffer {} Command Encoder", fb_id);
         fb.mCommandEncoder->setLabel(NS::String::string(fbce_label.c_str(), NS::UTF8StringEncoding));
-        fb.mCommandEncoder->setDepthClipMode(MTL::DepthClipModeClamp);
+        SetDepthClamp(fb.mCommandEncoder);
     }
 
     if (noise_scale != 0.0f) {
@@ -944,7 +953,7 @@ void GfxRenderingAPIMetal::ClearFramebuffer(bool color, bool depth) {
 
     std::string fbce_label = fmt::format("FrameBuffer {} Command Encoder After Clear", mCurrentFramebuffer);
     framebuffer.mCommandEncoder->setLabel(NS::String::string(fbce_label.c_str(), NS::UTF8StringEncoding));
-    framebuffer.mCommandEncoder->setDepthClipMode(MTL::DepthClipModeClamp);
+    SetDepthClamp(framebuffer.mCommandEncoder);
     framebuffer.mCommandEncoder->setViewport(*framebuffer.mViewport);
     framebuffer.mCommandEncoder->setScissorRect(*framebuffer.mScissorRect);
 
@@ -1155,7 +1164,7 @@ void GfxRenderingAPIMetal::CopyFramebuffer(int fb_dst_id, int fb_src_id, int src
 
     std::string fbce_label = fmt::format("FrameBuffer {} Command Encoder After Copy", fb_src_id);
     source_framebuffer.mCommandEncoder->setLabel(NS::String::string(fbce_label.c_str(), NS::UTF8StringEncoding));
-    source_framebuffer.mCommandEncoder->setDepthClipMode(MTL::DepthClipModeClamp);
+    SetDepthClamp(source_framebuffer.mCommandEncoder);
     source_framebuffer.mCommandEncoder->setViewport(*source_framebuffer.mViewport);
     source_framebuffer.mCommandEncoder->setScissorRect(*source_framebuffer.mScissorRect);
 

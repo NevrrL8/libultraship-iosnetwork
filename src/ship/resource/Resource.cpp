@@ -6,7 +6,9 @@ IResource::IResource(std::shared_ptr<ResourceInitData> initData) : mInitData(ini
 }
 
 IResource::~IResource() {
-    SPDLOG_TRACE("Resource Unloaded: {}\n", GetInitData()->Path);
+    if (const auto initData = GetInitData()) {
+        SPDLOG_TRACE("Resource Unloaded: {}\n", initData->Path);
+    }
 }
 
 bool IResource::IsDirty() {

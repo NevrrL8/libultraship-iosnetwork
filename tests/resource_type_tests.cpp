@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <spdlog/spdlog.h>
 #include <cstring>
 #include <memory>
 #include <variant>
@@ -405,4 +406,11 @@ TEST(ResourceLoader, RegisterMultipleVersionsOfSameTypePossible) {
                                        "Blob", static_cast<uint32_t>(Ship::ResourceType::Blob), 1);
     EXPECT_TRUE(ok0);
     EXPECT_TRUE(ok1);
+}
+
+TEST(IResource, DefaultResourceDestructionWithTraceLogging) {
+    const auto previous = spdlog::get_level();
+    spdlog::set_level(spdlog::level::trace);
+    { Ship::Blob blob; }
+    spdlog::set_level(previous);
 }
