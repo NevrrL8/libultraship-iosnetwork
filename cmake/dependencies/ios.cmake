@@ -3,13 +3,36 @@ include(FetchContent)
 #=================== SDL2 ===================
 find_package(SDL2 QUIET)
 if (NOT ${SDL2_FOUND})
+    # SDL 2.32.10 predates UIKit scene startup required by the latest SDK.
+    # Preserve local edits while applying the maintained scenes and orientation fixes.
+    set(sdl2_scene_patch ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/sdl2-uikit-scenes.patch)
+    set(sdl2_orientation_patch ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/sdl2-uikit-orientation.patch)
     FetchContent_Declare(
         SDL2
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG release-2.32.10
+        PATCH_COMMAND ${CMAKE_COMMAND} -Dpatch_file=${sdl2_scene_patch}
+            -Dfallback_patch_file=${sdl2_orientation_patch}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake
         OVERRIDE_FIND_PACKAGE
     )
     FetchContent_MakeAvailable(SDL2)
+endif()
+
+# Upgrade populated scene-only caches too; never modify an installed SDL2 package.
+FetchContent_GetProperties(SDL2)
+if (sdl2_POPULATED)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND}
+            -Dpatch_file=${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/sdl2-uikit-scenes.patch
+            -Dfallback_patch_file=${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/sdl2-uikit-orientation.patch
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake
+        WORKING_DIRECTORY ${sdl2_SOURCE_DIR}
+        RESULT_VARIABLE sdl2_orientation_result
+    )
+    if (NOT sdl2_orientation_result EQUAL 0)
+        message(FATAL_ERROR "SDL2 scene orientation patch failed; dependency files were preserved.")
+    endif()
 endif()
 
 # =================== SDL2_net ===================
